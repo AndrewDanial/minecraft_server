@@ -7,6 +7,10 @@ pub struct SetCenterChunk {
 
 impl SetCenterChunk {
     const PROTOCOL_ID: u8 = 0x58;
+    pub fn new(chunk_x: VarInt, chunk_z: VarInt) -> Self {
+        Self { chunk_x, chunk_z }
+    }
+
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut vec = vec![];
         vec.push(Self::PROTOCOL_ID);

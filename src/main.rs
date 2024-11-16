@@ -74,12 +74,12 @@ async fn read_packets(stream: TcpStream) {
                     break;
                 }
                 Ok(n) => {
-                    println!("Received packet of size: {n}");
-                    println!("Received packet: {:?}", &buffer[..n]);
+                    // println!("Received packet of size: {n}");
+                    // println!("Received packet: {:?}", &buffer[..n]);
 
                     // Send the received packet to the writing thread
                     if tx.send(buffer[..n].to_vec()).await.is_ok() {
-                        println!("packet sent!");
+                        // println!("packet sent!");
                     }
                 }
                 Err(e) => {
@@ -256,6 +256,11 @@ async fn read_packets(stream: TcpStream) {
                         state = State::Play;
                     }
                     State::Play => {
+                        let mut keep_alive = vec![0x27];
+                        keep_alive.extend_from_slice(&15u64.to_be_bytes());
+                        keep_alive.insert(0, keep_alive.len() as u8);
+                        writer.write_all(&keep_alive).await.unwrap();
+
                         if times_in_play > 0 {
                             break;
                         }
@@ -264,28 +269,42 @@ async fn read_packets(stream: TcpStream) {
                         let login_play = LoginPlay::new();
                         writer.write_all(&login_play.to_bytes()).await.unwrap();
 
+                        // let mut default_pos = vec![0x5b];
+                        // default_pos.extend_from_slice(&0u64.to_be_bytes());
+                        // default_pos.extend_from_slice(&0.0f32.to_be_bytes());
+                        // default_pos.insert(0, default_pos.len() as u8);
+                        // writer.write_all(&default_pos).await.unwrap();
+
                         let mut game_event = vec![0x23, 13];
                         game_event.extend_from_slice(&0.0f32.to_be_bytes());
                         game_event.insert(0, game_event.len() as u8);
                         writer.write_all(&game_event).await.unwrap();
 
-                        let chunk_data = ChunkData::new();
-                        writer.write_all(&chunk_data.to_bytes()).await.unwrap();
-
-                        let sync_player_pos = SyncPlayerPos::default();
+                        let sync_player_pos = SyncPlayerPos::new(0.0, 100.0, 0.0);
                         writer.write_all(&sync_player_pos.to_bytes()).await.unwrap();
 
-                        let center_chunk = SetCenterChunk::default();
-                        writer.write_all(&center_chunk.to_bytes()).await.unwrap();
+                        // let center_chunk = SetCenterChunk::new(VarInt(0), VarInt(0));
+                        // writer.write_all(&center_chunk.to_bytes()).await.unwrap();
 
-                        let border_size = SetBorderSize::new(100.0);
-                        writer.write_all(&border_size.to_bytes()).await.unwrap();
+                        // let center_chunk = SetCenterChunk::new(VarInt(32), VarInt(32));
+                        // writer.write_all(&center_chunk.to_bytes()).await.unwrap();
 
-                        // let mut keep_alive = vec![0x27];
-                        // keep_alive.extend_from_slice(&15u64.to_be_bytes());
-                        // keep_alive.insert(0, keep_alive.len() as u8);
-                        // println!("{:?}", keep_alive);
-                        // writer.write_all(&keep_alive).await.unwrap();
+                        for x in -1..=1 {
+                            for z in -1..=1 {
+                                println!("exectued");
+                                let chunk_data = ChunkData::new(x, z);
+                                if x == 0 && z == 0 {
+                                    println!("STONE");
+                                    writer.write_all(&chunk_data.to_bytes(true)).await;
+                                } else {
+                                    println!("AIR");
+                                    writer.write_all(&chunk_data.to_bytes(false)).await;
+                                }
+                            }
+                        }
+
+                        // let border_size = SetBorderSize::new(64.0);
+                        // writer.write_all(&border_size.to_bytes()).await.unwrap();
                     }
                 }
 

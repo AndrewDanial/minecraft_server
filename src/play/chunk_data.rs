@@ -16,10 +16,10 @@ pub struct ChunkData {
 impl ChunkData {
     const PROTOCOL_ID: u8 = 0x28;
 
-    pub fn new() -> Self {
+    pub fn new(chunk_x: i32, chunk_z: i32) -> Self {
         Self {
-            chunk_x: 0,
-            chunk_z: 0,
+            chunk_x,
+            chunk_z,
             heightmaps: NBT::TagCompound("", vec![]),
             size: VarInt(0),
             data: vec![],
@@ -28,17 +28,20 @@ impl ChunkData {
             light_data: Light::new(),
         }
     }
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self, stone: bool) -> Vec<u8> {
         let mut vec = vec![];
         vec.push(Self::PROTOCOL_ID);
         vec.extend_from_slice(&self.chunk_x.to_be_bytes());
         vec.extend_from_slice(&self.chunk_z.to_be_bytes());
         vec.extend_from_slice(&NBT::tag_to_bytes(self.heightmaps.clone()));
         // vec.extend_from_slice(&self.size.write_varint());
-        let dummy_data: Vec<u8> = vec![
-            0x00, 0x00, 0x00, 0x01, 0x00, 0x1, 0x2, 0x01, 0x03, 0x01, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC,
-            0xFF, 0xCC, 0xFF,
-        ];
+        let mut dummy_data: Vec<u8> = vec![];
+
+        if stone {
+            dummy_data = Self::stone_data();
+        } else {
+            dummy_data = Self::granite_data();
+        }
         vec.extend_from_slice(&VarInt(dummy_data.len() as u64 * 24).write_varint());
 
         for _ in 0..24 {
@@ -52,6 +55,20 @@ impl ChunkData {
         let mut len = VarInt(vec.len() as u64).write_varint();
         len.append(&mut vec);
         len
+    }
+
+    pub fn stone_data() -> Vec<u8> {
+        vec![
+            0xFF, 0xFF, 0x00, 0x01, 0x00, 0x1, 0x2, 0x00, 0x01, 0x01, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC,
+            0xFF, 0xCC, 0xFF,
+        ]
+    }
+
+    pub fn granite_data() -> Vec<u8> {
+        vec![
+            0xFF, 0xFF, 0x00, 0x00, 0x00, 0x1, 0x2, 0x00, 0x01, 0x01, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC,
+            0xFF, 0xCC, 0xFF,
+        ]
     }
 }
 

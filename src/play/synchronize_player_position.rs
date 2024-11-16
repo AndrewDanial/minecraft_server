@@ -16,6 +16,21 @@ pub struct SyncPlayerPos {
 
 impl SyncPlayerPos {
     const PROTOCOL_ID: u8 = 0x42;
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
+        Self {
+            teleport_id: VarInt(0),
+            x,
+            y,
+            z,
+            velocity_x: 0.0,
+            velocity_y: 0.0,
+            velocity_z: 0.0,
+            yaw: 0.0,
+            pitch: 0.0,
+            flags: 0,
+        }
+    }
+
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut vec = vec![];
         vec.push(Self::PROTOCOL_ID);
@@ -29,6 +44,7 @@ impl SyncPlayerPos {
         vec.extend_from_slice(&self.yaw.to_be_bytes());
         vec.extend_from_slice(&self.pitch.to_be_bytes());
         vec.extend_from_slice(&self.flags.to_be_bytes());
+        
         vec.insert(0, vec.len() as u8);
         vec
     }
