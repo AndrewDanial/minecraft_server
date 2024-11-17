@@ -67,4 +67,9 @@ mod tests {
     fn read_var_int() {
         assert_eq!(VarInt::read_varint(&[221, 199, 1]), Ok((25565, 3)));
     }
+
+    #[test]
+    fn var_int_test() {
+        assert_eq!(&VarInt(0xfe01).write_varint(), &[0]);
+    }
 }

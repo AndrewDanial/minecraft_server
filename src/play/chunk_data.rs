@@ -28,7 +28,7 @@ impl ChunkData {
             light_data: Light::new(),
         }
     }
-    pub fn to_bytes(&self, stone: bool) -> Vec<u8> {
+    pub fn to_bytes(&self, stone: &str) -> Vec<u8> {
         let mut vec = vec![];
         vec.push(Self::PROTOCOL_ID);
         vec.extend_from_slice(&self.chunk_x.to_be_bytes());
@@ -37,15 +37,20 @@ impl ChunkData {
         // vec.extend_from_slice(&self.size.write_varint());
         let mut dummy_data: Vec<u8> = vec![];
 
-        if stone {
-            dummy_data = Self::stone_data();
-        } else {
-            dummy_data = Self::granite_data();
+        match stone {
+            "stone" => dummy_data = Self::stone_data(),
+            "1" => dummy_data = Self::something_1(),
+            "2" => dummy_data = Self::something_2(),
+            "air" => dummy_data = Self::air_data(),
+            _ => unimplemented!(),
         }
         vec.extend_from_slice(&VarInt(dummy_data.len() as u64 * 24).write_varint());
 
-        for _ in 0..24 {
+        for _ in 0..12 {
             vec.extend_from_slice(&dummy_data);
+        }
+        for _ in 0..12 {
+            vec.extend_from_slice(&Self::air_data());
         }
         vec.extend_from_slice(&self.num_of_block_entities.write_varint());
         for i in &self.block_entities {
@@ -64,9 +69,23 @@ impl ChunkData {
         ]
     }
 
-    pub fn granite_data() -> Vec<u8> {
+    pub fn air_data() -> Vec<u8> {
         vec![
             0xFF, 0xFF, 0x00, 0x00, 0x00, 0x1, 0x2, 0x00, 0x01, 0x01, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC,
+            0xFF, 0xCC, 0xFF,
+        ]
+    }
+
+    pub fn something_1() -> Vec<u8> {
+        vec![
+            0xFF, 0xFF, 0x00, 0x02, 0x00, 0x1, 0x2, 0x00, 0x01, 0x01, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC,
+            0xFF, 0xCC, 0xFF,
+        ]
+    }
+
+    pub fn something_2() -> Vec<u8> {
+        vec![
+            0xFF, 0xFF, 0x00, 0x16, 0x00, 0x1, 0x2, 0x00, 0x01, 0x01, 0xCC, 0xFF, 0xCC, 0xFF, 0xCC,
             0xFF, 0xCC, 0xFF,
         ]
     }

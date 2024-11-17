@@ -92,6 +92,7 @@ async fn read_packets(stream: TcpStream) {
 
     let write_handle = tokio::spawn(async move {
         while let Some(packet) = rx.recv().await {
+            println!("{:X?}", packet);
             let mut packets: VecDeque<&[u8]> = VecDeque::new();
             let mut index = 0;
             while index < packet.len() {
@@ -119,6 +120,24 @@ async fn read_packets(stream: TcpStream) {
                     }
                     State::Status => {
                         println!("In Status State");
+
+                        // let (packet_length, bytes_read) = VarInt::read_varint(&packet).unwrap();
+                        // if packet[bytes_read..bytes_read + 1][0] == 0x01 {
+                        //     let mut ping_response = vec![0x01];
+                        //     ping_response.extend_from_slice(&packet[bytes_read + 1..]);
+                        //     let mut len = VarInt(ping_response.len() as u64).write_varint();
+                        //     len.append(&mut ping_response);
+                        //     writer.write_all(&len).await.unwrap();
+                        // } else {
+                        let mut buffer = std::fs::read_to_string("server.json").unwrap();
+
+                        let mut packet = vec![0x00];
+                        packet.extend_from_slice(&VarInt(buffer.len() as u64).write_varint());
+                        packet.extend_from_slice(buffer.as_bytes());
+                        let mut len = VarInt(packet.len() as u64).write_varint();
+                        len.append(&mut packet);
+                        writer.write_all(&len).await.unwrap();
+                        // }
                     }
                     State::Login => {
                         println!("In Login State");
@@ -280,7 +299,7 @@ async fn read_packets(stream: TcpStream) {
                         game_event.insert(0, game_event.len() as u8);
                         writer.write_all(&game_event).await.unwrap();
 
-                        let sync_player_pos = SyncPlayerPos::new(0.0, 100.0, 0.0);
+                        let sync_player_pos = SyncPlayerPos::new(8.0, 130.0, 8.0);
                         writer.write_all(&sync_player_pos.to_bytes()).await.unwrap();
 
                         // let center_chunk = SetCenterChunk::new(VarInt(0), VarInt(0));
@@ -289,20 +308,40 @@ async fn read_packets(stream: TcpStream) {
                         // let center_chunk = SetCenterChunk::new(VarInt(32), VarInt(32));
                         // writer.write_all(&center_chunk.to_bytes()).await.unwrap();
 
-                        for x in -1..=1 {
-                            for z in -1..=1 {
-                                println!("exectued");
+                        let radius = 6;
+                        for x in -radius / 2..=radius / 2 {
+                            for z in -radius / 2..=radius / 2 {
                                 let chunk_data = ChunkData::new(x, z);
                                 if x == 0 && z == 0 {
-                                    println!("STONE");
-                                    writer.write_all(&chunk_data.to_bytes(true)).await;
+                                    writer.write_all(&chunk_data.to_bytes("stone")).await;
+                                } else if x == 1 && z == 0 {
+                                    writer.write_all(&chunk_data.to_bytes("1")).await;
                                 } else {
-                                    println!("AIR");
-                                    writer.write_all(&chunk_data.to_bytes(false)).await;
+                                    writer.write_all(&chunk_data.to_bytes("2")).await;
                                 }
                             }
                         }
 
+                        // fill in with air blocks around the sides
+
+                        for z in -radius..=radius {
+                            let chunk_data = ChunkData::new(-radius, z);
+                            writer.write_all(&chunk_data.to_bytes("air")).await;
+                        }
+
+                        for x in -radius..=radius {
+                            let chunk_data = ChunkData::new(x, radius);
+                            writer.write_all(&chunk_data.to_bytes("air")).await;
+                        }
+
+                        for z in -radius..=radius {
+                            let chunk_data = ChunkData::new(radius, z);
+                            writer.write_all(&chunk_data.to_bytes("air")).await;
+                        }
+                        for x in -radius..=radius {
+                            let chunk_data = ChunkData::new(x, -radius);
+                            writer.write_all(&chunk_data.to_bytes("air")).await;
+                        }
                         // let border_size = SetBorderSize::new(64.0);
                         // writer.write_all(&border_size.to_bytes()).await.unwrap();
                     }
